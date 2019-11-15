@@ -4,12 +4,13 @@ import spidev
 from lib_nrf24.lib_nrf24 import NRF24
 
 DEBUG = True
-EOF_LINE = [101, 111, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # eof 000...
+EOF_LINE = [101, 111, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # e, o, f, 0, 0, 0...
 
 GPIO.setmode(GPIO.BCM)                 # set the gpio mode
 
 # set the pipe address. this address should be entered on the receiver also
-pipes = [[[0xE0, 0xE0, 0xF1, 0xF1, 0xE0], [0xF1, 0xF1, 0xF0, 0xF0, 0xE0]]]
+pipes = [[[0x1D, 0xEC, 0xAF, 0x00, 0x00], [0x2D, 0xEC, 0xAF, 0x00, 0x00]],
+         [[0x1D, 0xEC, 0xAF, 0x00, 0x01], [0x2D, 0xEC, 0xAF, 0x00, 0x01]]]
 
 radio = NRF24(GPIO, spidev.SpiDev())   # use the gpio pins
 radio.begin(0, 25)                     # start the radio and set the ce,csn pin ce= GPIO08, csn= GPIO25
@@ -18,15 +19,13 @@ radio.setChannel(0x76)                 # set the channel as 76 hex
 radio.setDataRate(NRF24.BR_1MBPS)      # set radio data rate
 radio.setPALevel(NRF24.PA_MAX)         # set PA level
 radio.setAutoAck(True)                 # set acknowledgement as true
-radio.setRetries(0,125)
+radio.setRetries(0, 125)
 ##radio.enableDynamicPayloads()
 radio.enableAckPayload()
 
 
 def send_message(message, debug=False):    
     result = radio.write(message)
-##    print("ACK:", radio.isAckPayloadAvailable())
-##    print("What happened:", radio.whatHappened())
     print("Result of sending:", result)
     if debug:
         print("Message sent: {}".format(message))
@@ -82,8 +81,6 @@ def clean_message(message, debug=False):
     Returns the message as a string.
     """
     if message:
-        #print(len(message))
-        #message.pop()
         message = "".join(map(chr, message))
         if debug:
             print("Message cleaned:", message)
@@ -120,19 +117,11 @@ def receive_file(file_name, file_size, debug=False):
     
     with open(file_name, "wb") as file:
         line = listen_message_light(debug=DEBUG)
-        while line != EOF_LINE:
+        while line and line != EOF_LINE:
             counter += 32
             print(counter, file_size)
             file.write(bytes(line))
             line = listen_message_light()
-            
-##    with open(file_name, "w") as file:        
-##        line = clean_message(listen_message_light(debug=DEBUG)).rstrip(chr(0))
-##        while line != "eof":
-####            counter += 1
-####            print(counter)
-##            file.write(line)
-##            line = clean_message(listen_message_light(debug=False), debug=False).rstrip(chr(0))
     
     radio.stopListening()
     
@@ -148,28 +137,18 @@ while True:
     
     for i, pipe in enumerate(pipes):
         print("Pipe", i, "- counter:", counter)
-        radio.openWritingPipe(pipe[0])             # open the defined pipe for writing
+        radio.openWritingPipe(pipe[0])
         radio.openReadingPipe(1, pipe[1])
         
-        send_message("data", DEBUG)          # abcdefghijklmno123456pqrstuvwxyz
-        
-        # Start new code
-        #receive_file("data/" + str(time.time())[-4:] + ".txt", "1000 bytes", DEBUG)
+        send_message("data", DEBUG)
+
         file_info_received, file_info = listen_file_info()
         
         if file_info_received:
             file_name, file_size = file_info
-            for _ in range(5):
+            for _ in range(100):
                 send_message("ok", DEBUG)
-            receive_file("data/" + file_name, file_size, DEBUG)
-        # End new code
+            receive_file("data/" + str(i) + "_" + file_name, file_size, DEBUG)
         
-##        message_received = listen_message(debug=DEBUG)
-##        
-##        if message_received:
-##            message_received = clean_message(message_received, DEBUG)
-##            if message_received == "Hello World":
-##                send_message("000000000000000000000000000000ok", DEBUG)  # ABCDEFGHIJKLMNO123456PQRSTUVWXYZ
-            
-##        else:
-##            print("Nothing received.")
+        print()
+
