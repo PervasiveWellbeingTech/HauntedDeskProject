@@ -28,9 +28,11 @@ const bool debugMode = 1;
 const int chipSelect = PD7;
 const String goodCommand = "data";
 int year = 19;
-int month = 10;
+int month = 11;
 int day = 29;
-int hour = 16;
+int hour = 23;
+
+int J;
 
 String fileName;
 String oldFileName;
@@ -99,14 +101,18 @@ void debug(String content) {
   }
 }
 
-void cout2(String content) {
-  char charContent[33] = {0};
-  content.toCharArray(charContent, sizeof(charContent));
-  radio.write(&charContent, sizeof(charContent));
-  //Serial.print(content);
-  delay(1500);
+void logData(String data){
 
+  if(dataFile){
+    dataFile.println(data);
+  }
+  else{
+    debug(F("Unable to open the dataFile, something in the code went wrong"));
+  }
+
+  
 }
+
 
 void cout(String content) {
   char charContent[33] = {0};
@@ -233,7 +239,7 @@ void readTransfer32B(String locFileName) { //File myFile){
   myFile.seek(pos);
   int8_t c = myFile.read();   // read first character
 
-
+  
   while (c != -1) {     // As long as there is no eof
     //debug("Pos "+String(myFile.position()));
     bufferr[i] = c;      // character in the transmit buffer
@@ -249,8 +255,8 @@ void readTransfer32B(String locFileName) { //File myFile){
 
       radioSetup();
       //String bufferrr = "abcdefghijklmnopqrstuvwxyz123456";
-
-      cout(bufferr);
+      rf24SendR(bufferr, 100);
+      //cout(bufferr);
       //debug("A packet of size "+String(sizeof(bufferr))+" has been send." );
       Serial.print(String(bufferr));
 
@@ -269,6 +275,8 @@ void readTransfer32B(String locFileName) { //File myFile){
 
     c = myFile.read();
     if (c == -1 && i != 0) {
+      debug(F("                                                       ENDING TRASNMISSIONNNNNNNN                                                            "));
+      Serial.print(String(c));
       cout(bufferr); // putting out the last bytes of data
       myFile.close(); // closing the file
 
@@ -291,7 +299,9 @@ void radioSetup() {
   radio.openReadingPipe(1, pipes[0]);   //Setting the address at which we will receive the data
 
   radio.setPALevel(RF24_PA_MAX);  //You can set it as minimum or maximum depending on the distance between the transmitter and receiver.
+  radio.setDataRate(RF24_1MBPS);
   radio.stopListening();          //This sets the module as transmitter
+  
 
 }
 
@@ -311,6 +321,7 @@ void listenToPI(){
 
             startDataTransfert(oldFileName);
             fileName = getDateTime() + ".txt";
+            SD.remove(fileName);
             dataFile = SD.open(fileName, FILE_WRITE);
             debug("  - new dataFile " + fileName + " opened.");
             return;
@@ -329,6 +340,7 @@ void listenToPI(){
 }
 
 void setupSD(){
+  J=0;
     debug(F("Initializing SD card..."));
   pinMode(chipSelect, OUTPUT);
 
@@ -472,14 +484,17 @@ void changePresets() {
 }
 
 void checkPresent() {
+  
   double ambtemp = mlx.readAmbientTempC(); 
   double objtemp = mlx.readObjectTempC();
   if(objtemp > ambtemp + 0.45) {
     debug(F(", Present Thermal"));
     pres = true;
   } else {
-    debug(F(", Not Present Thermal"));
-    dataFile.println(F("Not present thermal"));
+    J++;
+    //debug(", Not Present Thermal " + String(J));
+    logData("Not present thermal"+ String(J));
+
     pres = false;
   }
 }
@@ -496,7 +511,7 @@ void checkPresentAndMovement() {
   }
   if (remember_heights) changePresets();
   if (use_thermal) checkPresent();
-  if (!use_thermal) Serial.println();
+  if (!use_thermal); //Serial.println();
 }
 
 
@@ -545,7 +560,7 @@ void setup() {
 
 void loop() {
   snooze = false;
-  Serial.print(get_height_cm());
+  //Serial.print(get_height_cm());
   checkButtons();
   checkPresentAndMovement();
 
@@ -557,7 +572,6 @@ void loop() {
     debug(command);
 
     if (command == goodCommand) { 
-
       listenToPI();
 
 
