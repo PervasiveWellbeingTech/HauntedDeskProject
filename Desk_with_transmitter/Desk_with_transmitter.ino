@@ -21,7 +21,8 @@
 
 RF24 radio(10, 9); // CE, CSN
 
-const uint64_t pipes[2] = {0xE0E0F1F1E0LL, 0xF1F1F0F0E0LL}; // receiver and sender
+//const uint64_t pipes[2] = {0x1DECAF0001LL, 0x2DECAF0001LL}; // receiver and sender
+const uint64_t pipes[2] = {0x1DECAF0000LL, 0x2DECAF0000LL}; // receiver and sender
 
 // Variables for sd card logger
 const bool debugMode = 1;
@@ -81,6 +82,13 @@ OneButton down_button(DOWN_BUTTON_PIN, true);
 Chrono changeTimer(Chrono::SECONDS);
 Chrono timeOut(Chrono::SECONDS);
 Chrono heightChangeTimer(Chrono::SECONDS);
+
+// Initialize chrono for logging Data
+Chrono presTimer(Chrono::SECONDS);
+
+
+
+
 //Initialize the ultrasonic sensor
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
 uint16_t *history = ms_init(SGA);
@@ -101,10 +109,18 @@ void debug(String content) {
   }
 }
 
-void logData(String data){
+void logData(String data,Chrono & chrono,float logging_time){
 
   if(dataFile){
-    dataFile.println(data);
+    
+
+    if(chrono.hasPassed(logging_time,false)){
+          debug(F("Logging"));
+
+          dataFile.println(data);
+          chrono.restart(0);
+
+    }
   }
   else{
     debug(F("Unable to open the dataFile, something in the code went wrong"));
@@ -265,7 +281,6 @@ void readTransfer32B(String locFileName) { //File myFile){
       myFile.seek(pos);
 
       //debug("File position after seek "+String(myFile.position()));
-
 
       i = 0;
     }
@@ -493,7 +508,8 @@ void checkPresent() {
   } else {
     J++;
     //debug(", Not Present Thermal " + String(J));
-    logData("Not present thermal"+ String(J));
+    logData("Not present thermal"+ String(J),presTimer,0.2);
+    
 
     pres = false;
   }
