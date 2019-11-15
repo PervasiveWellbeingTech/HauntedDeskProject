@@ -20,3 +20,13 @@ with open("data/test_bytes.txt", "wb") as file:
 
 flag = "eof"
 print([ord(char) for char in flag])
+
+def create_record():
+    now = datetime.now()
+    #current_time = now.strftime("%H:%M:%S")
+    current_date = now.strftime("%y%m%d")
+    record_path = DATA_PATH + current_date
+    try:
+        os.mkdir(record_path)
+    except FileExistsError:
+        pass
