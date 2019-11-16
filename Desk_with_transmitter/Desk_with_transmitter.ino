@@ -9,6 +9,10 @@
 #include <Wire.h>
 #include <Adafruit_MLX90614.h>
 
+#include "RTClib.h"
+
+RTC_DS1307 rtc;
+
 // Library for transmitter //
 
 #include <SPI.h>
@@ -28,10 +32,10 @@ const uint64_t pipes[2] = {0x1DECAF0000LL, 0x2DECAF0000LL}; // receiver and send
 const bool debugMode = 1;
 const int chipSelect = PD7;
 const String goodCommand = "data";
-int year = 19;
-int month = 11;
-int day = 29;
-int hour = 23;
+String year;
+String  month ;
+String  day;
+String  hour ;
 
 int J;
 
@@ -98,8 +102,16 @@ uint16_t *history = ms_init(SGA);
 /* *********************************************** BEGINNING OF TRANSMITTER FUNCTIONS ****************************************** */
 
 String getDateTime() {
-  hour++;
-  return String(year) + String(month) + String(day) + String(hour);
+  DateTime now = rtc.now();
+  year = String(now.year());
+  year.remove(0, 2);
+  month = String(now.month());
+  day = String(now.day());
+  hour = String(now.hour());
+
+  debug(String(year) + String(month) + String(day) + String(hour));
+  
+  return year + month + day + hour;
 }
 
 
@@ -568,6 +580,12 @@ void down_longPressStop() {
 void setup() {
   mlx.begin();
   Serial.begin(9600);
+  if(!rtc.begin()){
+    debug(F("RTC SETUP FAILED"));
+  }
+
+  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+
   setPinModes();
   pres = true;
   linkButtons();
