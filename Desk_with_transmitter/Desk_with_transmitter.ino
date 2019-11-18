@@ -25,11 +25,11 @@ RTC_DS1307 rtc;
 
 RF24 radio(10, 9); // CE, CSN
 
-//const uint64_t pipes[2] = {0x1DECAF0001LL, 0x2DECAF0001LL}; // receiver and sender
-const uint64_t pipes[2] = {0x1DECAF0000LL, 0x2DECAF0000LL}; // receiver and sender
+const uint64_t pipes[2] = {0x1DECAF0001LL, 0x2DECAF0001LL}; // receiver and sender
+//const uint64_t pipes[2] = {0x1DECAF0000LL, 0x2DECAF0000LL}; // receiver and sender
 
 // Variables for sd card logger
-const bool debugMode = 1;
+const bool debugMode = 0;
 const int chipSelect = PD7;
 const String goodCommand = "data";
 String year;
@@ -262,13 +262,15 @@ void startDataTransfert(String locFileName) {
 void readTransfer32B(String locFileName) { //File myFile){
   char   bufferr[33];     // read buffer
   uint8_t i = 0;         // buffer index to 0
-  int pos = 1;
+  unsigned long pos = 0;
   File myFile = SD.open(locFileName, FILE_READ);
   myFile.seek(pos);
   int8_t c = myFile.read();   // read first character
+  int fileSize = int(myFile.size());
+
 
   
-  while (c != -1) {     // As long as there is no eof
+  while (c != -1 || pos > fileSize || pos < 0  ) {     // As long as there is no eof
     //debug("Pos "+String(myFile.position()));
     bufferr[i] = c;      // character in the transmit buffer
     i++;
@@ -277,16 +279,36 @@ void readTransfer32B(String locFileName) { //File myFile){
       //
       // buffer full
       pos = myFile.position();
-      //debug("The position is now "+String(pos));
+     
+
       myFile.close();
       //digitalWrite(chipSelect, HIGH);
 
       radioSetup();
       //String bufferrr = "abcdefghijklmnopqrstuvwxyz123456";
-      rf24SendR(bufferr, 100);
+
+      //debug(String(rf24SendR(bufferr, 10000)));
+      bool packageSend = rf24SendR(bufferr, 1000);
+      
+ 
+      if(pos < 0){
+        return;
+      }
+      
+      if(packageSend){
+        debug(F("Packet send"));
+      }
+      else{
+         //debug("The pos is : "+String(pos));
+         debug(F("Packet failed after 1000 trials, assuming connexion lost, interrupting everything"));
+         return;
+
+      }
+
+    
       //cout(bufferr);
       //debug("A packet of size "+String(sizeof(bufferr))+" has been send." );
-      Serial.print(String(bufferr));
+      //Serial.print(String(bufferr));
 
       myFile = SD.open(locFileName, FILE_READ);
       //debug("Newly opened file position "+String(myFile.position()));
@@ -295,6 +317,8 @@ void readTransfer32B(String locFileName) { //File myFile){
       //debug("File position after seek "+String(myFile.position()));
 
       i = 0;
+      memset(bufferr,0,sizeof(bufferr)); // reset the buffer
+
     }
     //
     // next read
@@ -303,13 +327,17 @@ void readTransfer32B(String locFileName) { //File myFile){
     c = myFile.read();
     if (c == -1 && i != 0) {
       debug(F("                                                       ENDING TRASNMISSIONNNNNNNN                                                            "));
-      Serial.print(String(c));
-      cout(bufferr); // putting out the last bytes of data
+      Serial.print("last ? " + String(c));
+      rf24SendR(bufferr,100); // putting out the last bytes of data
       myFile.close(); // closing the file
+      //return;
 
     }
 
   }
+  myFile.close(); // closing the file no matter what
+  //return;
+
 
 
 }
