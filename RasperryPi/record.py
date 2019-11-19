@@ -22,4 +22,4 @@ class Record:
     
     def write_log(self, line):
         with open(self.log_path, "a") as file:
-            file.write(line + "\n")
+            file.write(datetime.now().strftime("%y-%m-%d %H:%M:%S") + ": " + line + "\n")

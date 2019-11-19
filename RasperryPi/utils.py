@@ -1,4 +1,7 @@
 import time
+from datetime import datetime
+
+EOF_LINE = [101, 111, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # e, o, f, 0, 0, 0...
 
 def send_message(radio, message, debug=False):    
     result = radio.write(message)
@@ -92,12 +95,38 @@ def receive_file(radio, file_name, file_size, debug=False):
     counter = 0
     
     with open(file_name, "wb") as file:
-        line = listen_message_light(radio, debug=DEBUG)
+        line = listen_message_light(radio, debug=debug)
         while line and line != EOF_LINE:
             counter += 32
             print(counter, file_size)
             file.write(bytes(line))
             line = listen_message_light(radio)
+    
+    radio.stopListening()
+    
+    if debug:
+        print("File received.")
+        
+
+def timed_receive_file(radio, file_name, file_size, stop_time, debug=False):
+    if debug:
+        print("Start receiving file {} ({} bytes)".format(file_name, file_size))
+    
+    radio.startListening()
+    counter = 0
+    
+    with open(file_name, "wb") as file:
+        line = listen_message_light(radio, debug=debug)
+        while line and line != EOF_LINE:
+            counter += 32
+            print(counter, file_size)
+            file.write(bytes(line))
+            line = listen_message_light(radio)
+            
+            if datetime.now().second < stop_time:
+                if debug:
+                    print("WARNING: File transmission interrupted - Time > Stop time")
+                return "interrupted"
     
     radio.stopListening()
     
