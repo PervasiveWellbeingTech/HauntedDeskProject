@@ -31,7 +31,7 @@ radio.enableAckPayload()
 
 # ------------ WIP
 
-START_RECORD = 30
+START_RECORD = 20
 STOP_RECORD = 50
 recorded = False
 record = None
@@ -56,10 +56,11 @@ while True:
             record.write_log("INFO: Record created")
         
         while datetime.now().second < STOP_RECORD:
+            print("In while")
             for i, pipe in enumerate(pipes):
                 if not recorded_desk[i]:
                     if LOG:
-                        record.write_log("INFO: Pipe " + str(i))
+                        record.write_log("INFO: Desk " + desks[i])
                         
                     print("Pipe", i, "- counter:", counter)
                     radio.openWritingPipe(pipe[0])
@@ -73,8 +74,7 @@ while True:
                         file_name, file_size = file_info
                         
                         if LOG:
-                            record.write_log(file_name)
-                            record.write_log(file_size + " bytes")
+                            record.write_log("INFO: File info received ({} - {} bytes)".format(file_name, file_size))
                         
                         for _ in range(100):
                             utils.send_message(radio, "ok", DEBUG)
@@ -87,16 +87,16 @@ while True:
                         if LOG:
                             record.write_log("INFO: Pipe " + str(i) + " , success record.")
                     else:
+                        warning_message = file_info[0]
                         if LOG:
-                            record.write_log("WARNING: File info not received")
-                    
-                    if LOG:
-                        record.write_log("INFO: End of recording")
+                            record.write_log("WARNING: " + warning_message)
                     print()
                 else:
                     if LOG:
                         record.write_log("INFO: Pipe " + str(i) + " already recorded.")
                         
+        if LOG:
+            record.write_log("INFO: End of recording")                
         recorded_desk = [0] * len(desks)           
 ##    elif current_time.second < LIMIT:
 ##        print("Wait", current_time.second)

@@ -23,7 +23,7 @@ def listen_message_light(radio, time_out=2, debug=False):
         if time.time() - start > time_out:
             if debug:
                 print("WARNING: Time out - Stop listening.")
-                return []
+            return []
         
     message_received = []
     radio.read(message_received, radio.getDynamicPayloadSize())
@@ -69,7 +69,6 @@ def clean_message(message, debug=False):
 
 def listen_file_info(radio, debug=False):
     """
-    TODO: simplify
     Listens for two piece of information:
         - a file name
         - a file size
@@ -83,8 +82,14 @@ def listen_file_info(radio, debug=False):
         if file_size_message:
             file_name = clean_message(file_name_message, debug).rstrip(chr(0))
             file_size = clean_message(file_size_message, debug).rstrip(chr(0))
-            return True, (file_name, file_size)
-    return False, ("", "")
+            if file_name.endswith(".txt") and file_size.isnumeric():
+                return True, (file_name, file_size)
+            else:
+                if debug:
+                    print("WARNING: bad file name and/or file size")
+                return False, ("File info received but bad format", "")
+        return False, ("File name received but not file size", "")
+    return False, ("Nothing received", "")
 
 
 def receive_file(radio, file_name, file_size, debug=False):
@@ -123,7 +128,7 @@ def timed_receive_file(radio, file_name, file_size, stop_time, debug=False):
             file.write(bytes(line))
             line = listen_message_light(radio)
             
-            if datetime.now().second < stop_time:
+            if datetime.now().second > stop_time:
                 if debug:
                     print("WARNING: File transmission interrupted - Time > Stop time")
                 return "interrupted"

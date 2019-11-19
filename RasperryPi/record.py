@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 
 class Record:
+    # TODO: when using a folder, check whether it exists or not
     
     def __init__(self, path):
         self.path = self.create_folder(path)
