@@ -24,24 +24,24 @@ RTC_DS1307 rtc;
 /* ******************************************** VARIABLES FOR THE TRANSMITTER ***************************************** */
 
 RF24 radio(10, 9); // CE, CSN
-
 const uint64_t pipes[2] = {0x1DECAF0001LL, 0x2DECAF0001LL}; // receiver and sender
 //const uint64_t pipes[2] = {0x1DECAF0000LL, 0x2DECAF0000LL}; // receiver and sender
 
 // Variables for sd card logger
-const bool debugMode = 0;
-const int chipSelect = PD7;
+const bool debugMode = 1;
+const int chipSelect = 8;
 const String goodCommand = "data";
 String year;
-String  month ;
-String  day;
-String  hour ;
+
+String deskId = "1234";
 
 int J;
 
 String fileName;
 String oldFileName;
 File dataFile;
+
+
 
 
 /* *********************************************** VARIABLES FOR THE DESK ************************************************ */
@@ -89,6 +89,9 @@ Chrono heightChangeTimer(Chrono::SECONDS);
 
 // Initialize chrono for logging Data
 Chrono presTimer(Chrono::SECONDS);
+Chrono heightTimer(Chrono::SECONDS);
+Chrono actionTimer(Chrono::SECONDS);
+
 
 
 
@@ -105,20 +108,35 @@ String getDateTime() {
   DateTime now = rtc.now();
   year = String(now.year());
   year.remove(0, 2);
-  month = String(now.month());
-  day = String(now.day());
-  hour = String(now.hour());
 
-  debug(String(year) + String(month) + String(day) + String(hour));
-  
-  return year + month + day + hour;
+  String daten = year + String(now.month()) + String(now.day()) + String(now.hour());
+  debug(1,daten);
+  return daten ;
+}
+
+String getDateTimeLogger() {
+  char buf[20];
+  DateTime now = rtc.now();
+  sprintf(buf, "%02d:%02d:%02d %02d/%02d/%02d",  now.hour(), now.minute(), now.second(), now.day(), now.month(), now.year());  
+  return String(buf);
 }
 
 
-void debug(String content) {
-  if (debugMode) {
+void debug(bool ln,String content) {
+  if (debugMode && ln) {
     Serial.println(content);
   }
+  else if (debugMode && !ln){
+    Serial.print(content);
+  }
+}
+
+String getLogString(int mesureType,int mesuredValue){
+
+  J++;
+
+  return String(deskId)+","+getDateTimeLogger()+","+String(mesureType)+","+String(mesuredValue)+","+String(J);
+  
 }
 
 void logData(String data,Chrono & chrono,float logging_time){
@@ -127,7 +145,7 @@ void logData(String data,Chrono & chrono,float logging_time){
     
 
     if(chrono.hasPassed(logging_time,false)){
-          debug(F("Logging"));
+          debug(1,F("Logging"));
 
           dataFile.println(data);
           chrono.restart(0);
@@ -135,7 +153,7 @@ void logData(String data,Chrono & chrono,float logging_time){
     }
   }
   else{
-    debug(F("Unable to open the dataFile, something in the code went wrong"));
+    debug(1,F("Unable to open the dataFile, something in the code went wrong"));
   }
 
   
@@ -146,9 +164,9 @@ void cout(String content) {
   char charContent[33] = {0};
   content.toCharArray(charContent, sizeof(charContent));
   if (radio.write(&charContent, sizeof(charContent))) {
-    debug(F("Sucess"));
+    debug(1,F("Sucess"));
   } else {
-    debug(F("Failure for packet ")); debug(String(charContent));
+    debug(0,F("Failure for packet ")); debug(1,String(charContent));
   }
   //Serial.print(content);
 
@@ -162,13 +180,13 @@ bool rf24SendR(String content, int retries) {
   while (trial < retries) {
 
     if (radio.write(&charContent, sizeof(charContent))) {
-      debug(F("Success for packet: "));debug(String(charContent));
+      debug(0,F("Success for packet: "));debug(1,String(charContent));
       trial = retries; // just in case
       return true;
 
     } else {
       trial++;
-      debug("Failure for packet: " + String(charContent));
+      debug(0,F("Failure for packet: ")) ;debug(1,String(charContent));
     }
     //Serial.print(content);
 
@@ -190,7 +208,7 @@ bool validateResponse(String toValidate, unsigned long maxTime) {
       char text[33] = {0} ;   // set incmng message for 32 bytes
       radio.read(&text, sizeof(text));    //Reading the data
       String command = String(text);
-      debug(String(command));
+      debug(1,String(command));
 
       if (command == toValidate) {
         validated = true;
@@ -214,8 +232,8 @@ bool sendFilenameSize(String locFileName) {
 
   File dataTransfertFile = SD.open(locFileName, FILE_READ);
   if (dataTransfertFile) {
-    debug(F("File opened and ready for transfert"));
-    debug("File size is: " + String(dataTransfertFile.size()) + " bytes");
+    debug(1,F("File opened and ready for transfert"));
+    debug(0,"File size is: ");debug(1, String(dataTransfertFile.size()));
     String fz = String(dataTransfertFile.size());
     //String currentChar = String(char(dataTransfertFile.read()));
     dataTransfertFile.close();
@@ -224,32 +242,32 @@ bool sendFilenameSize(String locFileName) {
 
 
     if (rf24SendR(locFileName, 2)) {
-      debug(F("Filename has been send"));
+      debug(1,F("Filename has been send"));
     }
     else {
-      debug(F("Fail to send filename,  waiting for another data query"));
+      debug(1,F("Fail to send filename,  waiting for another data query"));
       return false;
     };
     if (rf24SendR(fz, 2)) {
-      debug(F("Filesize has been send"));
+      debug(1,F("Filesize has been send"));
     } else {
-      debug(F("Fail to send filesize,  waiting for another data query"));
+      debug(1,F("Fail to send filesize,  waiting for another data query"));
       return false;
     };
 
 
     if (validateResponse("ok", 3000)) {
-      debug(F("File Name and size has been acknowledge, ready to proceed file transfer"));
+      debug(1,F("File Name and size has been acknowledge, ready to proceed file transfer"));
       return true;
     }
     else {
-      debug(F("File Name and size has NOT been acknowledge, waiting for another data query"));
+      debug(1,F("File Name and size has NOT been acknowledge, waiting for another data query"));
       return false;
     }
   }
 
   else {
-    debug(F("Impossible to open the file,waiting for another data query"));return false;
+    debug(1,F("Impossible to open the file,waiting for another data query"));return false;
   }
 }
 
@@ -288,7 +306,7 @@ void readTransfer32B(String locFileName) { //File myFile){
       //String bufferrr = "abcdefghijklmnopqrstuvwxyz123456";
 
       //debug(String(rf24SendR(bufferr, 10000)));
-      bool packageSend = rf24SendR(bufferr, 1000);
+      bool packageSend = rf24SendR(bufferr, 40);
       
  
       if(pos < 0){
@@ -296,11 +314,11 @@ void readTransfer32B(String locFileName) { //File myFile){
       }
       
       if(packageSend){
-        debug(F("Packet send"));
+        debug(1,F("Packet send"));
       }
       else{
          //debug("The pos is : "+String(pos));
-         debug(F("Packet failed after 1000 trials, assuming connexion lost, interrupting everything"));
+         debug(1,F("Packet failed after 1000 trials, assuming connexion lost, interrupting everything"));
          return;
 
       }
@@ -326,8 +344,7 @@ void readTransfer32B(String locFileName) { //File myFile){
 
     c = myFile.read();
     if (c == -1 && i != 0) {
-      debug(F("                                                       ENDING TRASNMISSIONNNNNNNN                                                            "));
-      Serial.print("last ? " + String(c));
+      debug(1,F("                                                       ENDING TRASNMISSIONNNNNNNN                                                            "));
       rf24SendR(bufferr,100); // putting out the last bytes of data
       myFile.close(); // closing the file
       //return;
@@ -362,9 +379,9 @@ void radioSetup() {
 
 void listenToPI(){
   /// this must be replace by a time
-      debug(F("Good command:"));
+      debug(1,F("Good command:"));
       dataFile.close();
-      debug("  - current dataFile " + fileName + " closed");
+      debug(0,"  - current dataFile ");debug(0,fileName);debug(1," closed");
       oldFileName = fileName; // backup the filename
 
       unsigned long time = millis();
@@ -372,23 +389,23 @@ void listenToPI(){
       while ((millis()-time)<maxTime) {
         if (validateResponse("data",3000)) {
           if (sendFilenameSize(oldFileName)) {
-            debug(F("Handshake for sending file name and size has been sucessfull"));
+            debug(1,F("Handshake for sending file name and size has been sucessfull"));
 
             startDataTransfert(oldFileName);
             fileName = getDateTime() + ".txt";
             SD.remove(fileName);
             dataFile = SD.open(fileName, FILE_WRITE);
-            debug("  - new dataFile " + fileName + " opened.");
+            debug(0,"  - new dataFile ");debug(0,fileName);debug(1," opened.");
             return;
           }
           else {
-            debug(F("Handshake for sending file name and size has FAILED"));
+            debug(1,F("Handshake for sending file name and size has FAILED"));
           }
 
 
         }else{
          String time_left = String( (maxTime-(millis()-time))/1000);
-         debug(("Data command has not been received trying again for: "+ time_left+ " seconds"));
+         debug(0,F("Data command has not been received trying again for: "));debug(0,time_left);debug(1,F(" seconds"));
           }
         
       }
@@ -396,22 +413,23 @@ void listenToPI(){
 
 void setupSD(){
   J=0;
-    debug(F("Initializing SD card..."));
+    debug(1,F("Initializing SD card..."));
   pinMode(chipSelect, OUTPUT);
 
   // see if the card is present and can be initialized:
   if (!SD.begin(chipSelect)) {
-    debug(F("Card failed, or not present"));
+    debug(1,F("Card failed, or not present"));
     // don't do anything more:
     while (1);
   }
-  debug(F("Card initialized."));
+  debug(1,F("Card initialized."));
   fileName = getDateTime() + ".txt";
+  debug(1,fileName);
   dataFile = SD.open(fileName, FILE_WRITE);
   if (dataFile) {
-    debug("dataFile " + fileName + " opened.");
+    debug(0,"dataFile ");debug(0,fileName);debug(1," opened.");
   } else {
-    debug(F("ERROR: dataFile not opened."));
+    debug(1,F("ERROR: dataFile not opened."));
   }
 }
 
@@ -470,14 +488,14 @@ void set_desk_height(int height_in_cm) {
   if (current_height_cm < height_in_cm - tolerance) {
     raise_up();
     while (current_height_cm < height_in_cm - tolerance && !timeOut.hasPassed(timeOutTime, false) && !snooze) {
-      debug(String(current_height_cm));
+      debug(1,String(current_height_cm));
       current_height_cm = get_height_cm();
     }
   }
   else {
     lower();
     while (current_height_cm > height_in_cm + tolerance && !timeOut.hasPassed(timeOutTime, false) && !snooze) {
-      debug(String(current_height_cm));
+      debug(1,String(current_height_cm));
       current_height_cm = get_height_cm();
     }
   }
@@ -509,11 +527,16 @@ void linkButtons() {
 //Depends on where the desk is when called (aka, responds to user changes)
 void switchPosition() {
   if (get_height_cm() <= (tall_height + short_height) / 2) {
-    debug(F("MOVING UP - AUTOMATIC")); 
+    debug(1,F("MOVING UP - AUTOMATIC")); 
+    logData(getLogString(4,1),actionTimer,5);
+    logData(getLogString(1,tall_height),actionTimer,5);
+
     set_desk_height(tall_height);
   }
   else {
-    debug(F("MOVING DOWN - AUTOMATIC"));
+    debug(1,F("MOVING DOWN - AUTOMATIC"));
+    logData(getLogString(4,1),actionTimer,5);
+    logData(getLogString(1,short_height),actionTimer,5);
     set_desk_height(short_height);
   }
   stop_desk();
@@ -525,10 +548,11 @@ void changePresets() {
     if (heightChangeTimer.hasPassed(set_new_height_time, false)) {
       heightChangeTimer.restart(0);
       if (current_height_cm > (tall_height + short_height) / 2) {
-        debug(F("Tall Height Change"));
+        debug(1,F("Tall Height Change"));
+
         tall_height = current_height_cm;
       } else {
-        debug(F("Short Height Change"));
+        debug(1,F("Short Height Change"));
         short_height = current_height_cm;
       }
     }
@@ -543,12 +567,17 @@ void checkPresent() {
   double ambtemp = mlx.readAmbientTempC(); 
   double objtemp = mlx.readObjectTempC();
   if(objtemp > ambtemp + 0.45) {
-    debug(F(", Present Thermal"));
+    debug(1,F(", Present Thermal"));
+    
+    logData(getLogString(1,get_height_cm()),heightTimer,1);
+    logData(getLogString(3,1),presTimer,1);
+    
     pres = true;
   } else {
-    J++;
-    //debug(", Not Present Thermal " + String(J));
-    logData("Not present thermal"+ String(J),presTimer,0.2);
+    debug(0,F(", Not Present Thermal "));debug(1,String(J));
+    logData(getLogString(1,get_height_cm()),heightTimer,1);
+    logData(getLogString(3,0),heightTimer,1);
+
     
 
     pres = false;
@@ -574,28 +603,36 @@ void checkPresentAndMovement() {
 
 // This function will be called once, when the up button is pressed for a long time.
 void up_longPressStart() {
-  debug(F("User Up longPress start"));
+  debug(1,F("User Up longPress start"));
+  logData(getLogString(2,5),actionTimer,0);
+
   raise_up();
 } 
 
 
 // This function will be called once, when the up button is released after beeing pressed for a long time.
 void up_longPressStop() {
-  debug(F("User Up longPress stop"));
+  debug(1,F("User Up longPress stop"));
+  logData(getLogString(2,6),actionTimer,0);
+
   stop_desk();
 } 
 
 
 // This function will be called once, when the down button is pressed for a long time.
 void down_longPressStart() {
-  debug(F("User Down longPress start"));
+  debug(1,F("User Down longPress start"));
+  logData(getLogString(2,7),actionTimer,0);
+
   lower();
 } 
 
 
 // This function will be called once, when the down button is released after beeing pressed for a long time.
 void down_longPressStop() {
-  debug(F("User Down longPress stop"));
+  debug(1,F("User Down longPress stop"));
+  logData(getLogString(2,8),actionTimer,0);
+
   stop_desk();
 } 
 
@@ -609,7 +646,7 @@ void setup() {
   mlx.begin();
   Serial.begin(9600);
   if(!rtc.begin()){
-    debug(F("RTC SETUP FAILED"));
+    debug(1,F("RTC SETUP FAILED"));
   }
 
   rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
@@ -629,16 +666,16 @@ void loop() {
     // open the file. note that only one file can be open at a time,
   // so you have to close this one before opening another.
   if (Serial.available()) { /// this needs to be replace with a code that triggers at one time 
-    debug(F("Command received: "));
+    debug(1,F("Command received: "));
     String command = Serial.readString();
-    debug(command);
+    debug(1,command);
 
     if (command == goodCommand) { 
       listenToPI();
 
 
     } else {
-      debug(F("WARNING: bad command."));
+      debug(1,F("WARNING: bad command."));
     }
   }
 
