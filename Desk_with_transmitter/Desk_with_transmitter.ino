@@ -24,14 +24,15 @@ RTC_DS1307 rtc;
 /* ******************************************** VARIABLES FOR THE TRANSMITTER ***************************************** */
 
 RF24 radio(10, 9); // CE, CSN
-const uint64_t pipes[2] = {0x1DECAF0001LL, 0x2DECAF0001LL}; // receiver and sender
-//const uint64_t pipes[2] = {0x1DECAF0000LL, 0x2DECAF0000LL}; // receiver and sender
+//const uint64_t pipes[2] = {0x1DECAF0001LL, 0x2DECAF0001LL}; // receiver and sender
+const uint64_t pipes[2] = {0x1DECAF0000LL, 0x2DECAF0000LL}; // receiver and sender
 
 // Variables for sd card logger
 const bool debugMode = 1;
 const int chipSelect = 8;
 const String goodCommand = "data";
 String year;
+int year_counter = 0;
 
 String deskId = "1234";
 
@@ -106,8 +107,9 @@ uint16_t *history = ms_init(SGA);
 
 String getDateTime() {
   DateTime now = rtc.now();
-  year = String(now.year());
+  year = String(now.year() + year_counter);
   year.remove(0, 2);
+  year_counter++;
 
   String daten = year + String(now.month()) + String(now.day()) + String(now.hour());
   debug(1,daten);
@@ -411,6 +413,44 @@ void listenToPI(){
       }
 }
 
+void listenToPICustom(unsigned long maxTime){
+  /// this must be replace by a time
+      debug(1,F("Good command:"));
+      dataFile.close();
+      debug(0,"  - current dataFile ");debug(0,fileName);debug(1," closed");
+      oldFileName = fileName; // backup the filename
+
+      unsigned long time = millis();
+      //unsigned long maxTime  = 18000000; // eq 5 hours in millis
+      while ((millis()-time)<maxTime) {
+        if (validateResponse("data",3000)) {
+          if (sendFilenameSize(oldFileName)) {
+            debug(1,F("Handshake for sending file name and size has been sucessfull"));
+
+            startDataTransfert(oldFileName);
+            
+            fileName = getDateTime() + ".txt";
+            dataFile = SD.open(fileName, FILE_WRITE);
+            debug(0,"  - new dataFile ");debug(0,fileName);debug(1," opened.");
+            return;
+          }
+          else {
+            debug(1,F("Handshake for sending file name and size has FAILED"));
+          }
+
+
+        }else{
+         String time_left = String( (maxTime-(millis()-time))/1000);
+         debug(0,F("Data command has not been received trying again for: "));debug(0,time_left);debug(1,F(" seconds"));
+          }
+        
+      }
+
+      fileName = getDateTime() + ".txt";
+      dataFile = SD.open(fileName, FILE_WRITE);
+      debug(0,"  - new dataFile ");debug(0,fileName);debug(1," opened.");
+}
+
 void setupSD(){
   J=0;
     debug(1,F("Initializing SD card..."));
@@ -657,6 +697,7 @@ void setup() {
   setupSD();
 }
 
+/*
 void loop() {
   snooze = false;
   //Serial.print(get_height_cm());
@@ -677,8 +718,20 @@ void loop() {
     } else {
       debug(1,F("WARNING: bad command."));
     }
-  }
+  } 
+}
+*/
 
-
+void loop() {
   
+  snooze = false;
+  //Serial.print(get_height_cm());
+  checkButtons();
+  checkPresentAndMovement();
+
+  int current_second = rtc.now().second();
+  if ((current_second >= 10) && (current_second < 40)) {
+    unsigned long maxTime = (40 - current_second) * 1000;
+    listenToPICustom(maxTime);
+  }
 }
