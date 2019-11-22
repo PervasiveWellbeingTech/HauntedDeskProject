@@ -23,7 +23,7 @@ RTC_DS1307 rtc;
 
 RF24 radio(10, 9); // CE, CSN
 const uint64_t pipes[2] = {0x1DECAF0000LL, 0x2DECAF0000LL}; // receiver and sender
-String deskId = "5678";
+String deskId = "0000";
 
 // Variables for sd card logger
 const bool debugMode = 1;
@@ -44,7 +44,7 @@ int shortHeight = 67;
 int tallHeight = 106;
 bool useThermal = true;
 bool rememberHeights = true;
-#define CHANGE_TIME 30 //__ times 60 seconds
+#define CHANGE_TIME 30*60 //__ times 60 seconds
 //CHANGE THESE VALUES
 
 //Pins for Ultrasonic Sensor
@@ -62,7 +62,7 @@ bool rememberHeights = true;
 #define tolerance 1
 #define shortDelayTime 50
 int prevHeight = 0;
-int setNewHeightTime = 10;
+int setNewHeightTime = 120;
 int timeOutTime = 15;
 bool snooze = false;
 bool pres;
@@ -124,9 +124,9 @@ String getLogString(int mesureType,int mesuredValue) {
   return String(deskId)+","+getDateTimeLogger()+","+String(mesureType)+","+String(mesuredValue)+","+String(J);
 }
 
-void logData(String data,Chrono & chrono,float loggingTime) {
+void logData(String data, Chrono & chrono, float loggingTime) {
   if(dataFile) {
-    if(chrono.hasPassed(loggingTime,false)) {
+    if(chrono.hasPassed(loggingTime, false)) {
       debug(1, F("Logging"));
       dataFile.println(data);
       chrono.restart(0);
@@ -521,32 +521,35 @@ void linkButtons() {
 void switchPosition() {
   if (getHeightCm() <= (tallHeight + shortHeight) / 2) {
     debug(1, F("MOVING UP - AUTOMATIC")); 
-    logData(getLogString(4, 1), actionTimer, 5);
-    logData(getLogString(1, tallHeight), actionTimer, 5);
+    logData(getLogString(4, 1), actionTimer, 0);
+    logData(getLogString(1, tallHeight), actionTimer, 0);
 
     setDeskHeight(tallHeight);
   }
   else {
     debug(1, F("MOVING DOWN - AUTOMATIC"));
-    logData(getLogString(4, 1), actionTimer, 5);
-    logData(getLogString(1, shortHeight), actionTimer, 5);
+    logData(getLogString(4, 0), actionTimer, 0);
+    logData(getLogString(1, shortHeight), actionTimer, 0);
     setDeskHeight(shortHeight);
   }
   stopDesk();
 }
 
+
+//TODO: NEED TO MAKE SURE THAT IT DOES NOT LOG HEIGHT CHANGE IF HEIGHT DIDN'T CHANGE (for the +/-1cm)
 void changePresets() {
   int currentHeightCm = getHeightCm();
   if (prevHeight == currentHeightCm || prevHeight == currentHeightCm + 1 || prevHeight == currentHeightCm - 1) {
     if (heightChangeTimer.hasPassed(setNewHeightTime, false)) {
       heightChangeTimer.restart(0);
-      if (currentHeightCm > (tallHeight + shortHeight) / 2) {
+      if ((currentHeightCm > (tallHeight + shortHeight) / 2) && (currentHeightCm != tallHeight)) {
         debug(1, F("Tall Height Change"));
-
+        logData(getLogString(5, 1), actionTimer, 0);
         tallHeight = currentHeightCm;
       }
-      else {
+      else if (currentHeightCm != shortHeight) {
         debug(1, F("Short Height Change"));
+        logData(getLogString(5, 0), actionTimer, 0);
         shortHeight = currentHeightCm;
       }
     }
@@ -565,8 +568,8 @@ void checkPresent() {
   if(objtemp > ambtemp + 0.45) {
     debug(1, F(", Present Thermal"));
     
-    logData(getLogString(1, getHeightCm()), heightTimer, 1);
-    logData(getLogString(3, 1), presTimer, 1);
+    logData(getLogString(1, getHeightCm()), heightTimer, 30);
+    logData(getLogString(3, 1), presTimer, 30);
     
     pres = true;
   }
@@ -574,8 +577,8 @@ void checkPresent() {
     debug(0, F(", Not Present Thermal "));
     debug(1, String(J));
     
-    logData(getLogString(1, getHeightCm()), heightTimer, 1);
-    logData(getLogString(3, 0), heightTimer, 1);
+    logData(getLogString(1, getHeightCm()), heightTimer, 30);
+    logData(getLogString(3, 0), presTimer, 30);
 
     pres = false;
   }
@@ -676,9 +679,32 @@ void loop() {
   checkButtons();
   checkPresentAndMovement();
 
+  /*
   int currentSecond = rtc.now().second();
   if ((currentSecond >= 1) && (currentSecond < 31)) {
     unsigned long maxTime = (31 - currentSecond) * 1000;
     listenToPICustom(maxTime);
+  }
+  */
+
+  DateTime currentDateTime = rtc.now();
+  unsigned long currentSecond = currentDateTime.second();
+  unsigned long currentMinute = currentDateTime.minute();
+  unsigned long currentHour = currentDateTime.hour();
+
+  unsigned long currentTimeInSeconds = currentSecond + 60 * currentMinute + 3600 * currentHour;
+  
+  //if ((currentHour >= 21) || (currentHour < 6)) {
+  if ((currentTimeInSeconds >= 75600) || (currentTimeInSeconds < 21600)) {
+    unsigned long maxTime = 0;
+
+    if (currentTimeInSeconds >= 75600) {
+      maxTime += 86400 - currentTimeInSeconds + 21600;
+    }
+    else if (currentTimeInSeconds < 21600) {
+      maxTime += 21600 - currentTimeInSeconds;
+    }
+    
+    listenToPICustom(maxTime * 1000);
   }
 }
