@@ -137,3 +137,44 @@ def timed_receive_file(radio, file_name, file_size, stop_time, debug=False):
     
     if debug:
         print("File received.")
+
+
+def get_time_in_seconds():
+    current_time = datetime.now()
+    
+    current_second = current_time.second
+    current_minute = current_time.minute
+    current_hour = (current_time.hour - 8) % 24  # TODO: clean timezone handling
+    
+    current_time_in_seconds = current_second + 60 * current_minute + 3600 * current_hour
+    
+    return current_time_in_seconds
+
+
+def real_timed_receive_file(radio, file_name, file_size, stop_time, debug=False):
+    # TODO: use stop_time properly
+    if debug:
+        print("Start receiving file {} ({} bytes)".format(file_name, file_size))
+    
+    radio.startListening()
+    counter = 0
+    
+    with open(file_name, "wb") as file:
+        line = listen_message_light(radio, debug=debug)
+        while line and line != EOF_LINE:
+            counter += 32
+            print(counter, file_size)
+            file.write(bytes(line))
+            line = listen_message_light(radio)
+            
+            current_time_in_seconds = get_time_in_seconds()
+            
+            if 21600 < current_time_in_seconds < 75600:
+                if debug:
+                    print("WARNING: File transmission interrupted - Time > Stop time")
+                return "interrupted"
+    
+    radio.stopListening()
+    
+    if debug:
+        print("File received.")

@@ -10,6 +10,7 @@ class Record:
         open(self.log_path, 'w').close()
         
     def create_folder(self, path):
+        # TODO: clean timezone handling
         now = datetime.now()
         current_date = now.strftime("%y%m%d")
         path += current_date
