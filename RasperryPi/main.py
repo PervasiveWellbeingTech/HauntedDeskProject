@@ -7,7 +7,6 @@ from lib_nrf24.lib_nrf24 import NRF24
 from record import Record
 
 DEBUG = True
-LOG = True
 DATA_PATH = "data/"
 
 GPIO.setmode(GPIO.BCM)                 # set the gpio mode
@@ -48,8 +47,7 @@ while True:
             print("New day")
             record = Record(DATA_PATH)
         
-        if LOG:
-            record.write_log("INFO: Record created")
+        record.write_log("INFO: Record created")
         
         while current_time_in_seconds >= START_RECORD or current_time_in_seconds < STOP_RECORD:
             print(current_time_in_seconds >= START_RECORD or current_time_in_seconds < STOP_RECORD)
@@ -60,8 +58,7 @@ while True:
                 print("In while")
                 for i, pipe in enumerate(pipes):
                     if not recorded_desk[i]:
-                        if LOG:
-                            record.write_log("INFO: Desk " + desks[i])
+                        record.write_log("INFO: Desk " + desks[i])
                             
                         print("Pipe", i)
                         radio.openWritingPipe(pipe[0])
@@ -74,8 +71,7 @@ while True:
                         if file_info_received:
                             file_name, file_size = file_info
                             
-                            if LOG:
-                                record.write_log("INFO: File info received ({} - {} bytes)".format(file_name, file_size))
+                            record.write_log("INFO: File info received ({} - {} bytes)".format(file_name, file_size))
                             
                             for _ in range(100):
                                 utils.send_message(radio, "ok", DEBUG)
@@ -91,23 +87,18 @@ while True:
                             file_reception = utils.real_timed_receive_file(radio, record.path + "/" + desks[i] + "_" + file_name,
                                                                            file_size, STOP_RECORD, START_RECORD, DEBUG)
                             if file_reception == "interrupted":
-                                if LOG:
-                                    record.write_log("WARNING: Transmission interrupted.")
+                                record.write_log("WARNING: Transmission interrupted.")
                                 break
                             recorded_desk[i] = 1
-                            if LOG:
-                                record.write_log("INFO: Desk " + desks[i] + " , success record.")
+                            record.write_log("INFO: Desk " + desks[i] + " , success record.")
                         else:
                             warning_message = file_info[0]
-                            if LOG:
-                                record.write_log("WARNING: " + warning_message)
+                            record.write_log("WARNING: " + warning_message)
                         print()
                     else:
-                        if LOG:
-                            record.write_log("INFO: Desk " + desks[i] + " already recorded.")
+                        record.write_log("INFO: Desk " + desks[i] + " already recorded.")
                             
-        if LOG:
-            record.write_log("INFO: End of recording")                
+        record.write_log("INFO: End of recording")                
         recorded_desk = [0] * len(desks)           
     else:
         print("Wait", current_time_in_seconds)
@@ -134,16 +125,14 @@ while True:
             counter += 1  # simulates a new day
             record = Record(DATA_PATH + str(counter) + "_")
         
-        if LOG:
-            record.write_log("INFO: Record created")
+        record.write_log("INFO: Record created")
         
         while dt.datetime.now().second < STOP_RECORD:
             if sum(recorded_desk) != len(recorded_desk):
                 print("In while")
                 for i, pipe in enumerate(pipes):
                     if not recorded_desk[i]:
-                        if LOG:
-                            record.write_log("INFO: Desk " + desks[i])
+                        record.write_log("INFO: Desk " + desks[i])
                             
                         print("Pipe", i, "- day:", counter)
                         radio.openWritingPipe(pipe[0])
@@ -156,30 +145,24 @@ while True:
                         if file_info_received:
                             file_name, file_size = file_info
                             
-                            if LOG:
-                                record.write_log("INFO: File info received ({} - {} bytes)".format(file_name, file_size))
+                            record.write_log("INFO: File info received ({} - {} bytes)".format(file_name, file_size))
                             
                             for _ in range(100):
                                 utils.send_message(radio, "ok", DEBUG)
                             file_reception = utils.timed_receive_file(radio, record.path + "/" + desks[i] + "_" + file_name, file_size, STOP_RECORD, DEBUG)
                             if file_reception == "interrupted":
-                                if LOG:
-                                    record.write_log("WARNING: Transmission interrupted.")
+                                record.write_log("WARNING: Transmission interrupted.")
                                 break
                             recorded_desk[i] = 1
-                            if LOG:
-                                record.write_log("INFO: Desk " + desks[i] + " , success record.")
+                            record.write_log("INFO: Desk " + desks[i] + " , success record.")
                         else:
                             warning_message = file_info[0]
-                            if LOG:
-                                record.write_log("WARNING: " + warning_message)
+                            record.write_log("WARNING: " + warning_message)
                         print()
                     else:
-                        if LOG:
-                            record.write_log("INFO: Desk " + desks[i] + " already recorded.")
+                        record.write_log("INFO: Desk " + desks[i] + " already recorded.")
                             
-        if LOG:
-            record.write_log("INFO: End of recording")                
+        record.write_log("INFO: End of recording")                
         recorded_desk = [0] * len(desks)           
     else:
         print("Wait", current_time.second)
