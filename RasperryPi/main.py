@@ -1,9 +1,9 @@
 import time
 import utils
 import spidev
+import datetime as dt
 import RPi.GPIO as GPIO
 from lib_nrf24.lib_nrf24 import NRF24
-from datetime import datetime
 from record import Record
 
 DEBUG = True
@@ -29,35 +29,16 @@ radio.setRetries(0, 125)
 radio.enableAckPayload()
 
 
-START_RECORD = 75600  # 21 hours in seconds
-STOP_RECORD = 21600   # 6 hours in seconds
+START_RECORD = dt.timedelta(hours=21).seconds  # 21 hours in seconds
+STOP_RECORD = dt.timedelta(hours=6).seconds    # 6 hours in seconds
+DAY_IN_SECONDS = 24 * 3600
 record = None
 
 recorded_desk = [0] * len(desks)
 
 while True:
-    current_time = datetime.now()
+    current_time = dt.datetime.now()
     time.sleep(3)
-    
-    """
-  DateTime currentDateTime = rtc.now();
-  unsigned long currentSecond = currentDateTime.second();
-  unsigned long currentMinute = currentDateTime.minute();
-  unsigned long currentHour = currentDateTime.hour();
-
-  unsigned long currentTimeInSeconds = currentSecond + 60 * currentMinute + 3600 * currentHour;
-  
-  //if ((currentHour >= 21) || (currentHour < 6)) {
-  if ((currentTimeInSeconds >= 75600) || (currentTimeInSeconds < 21600)) {
-    unsigned long maxTime = 0;
-
-    if (currentTimeInSeconds >= 75600) {
-      maxTime += 86400 - currentTimeInSeconds + 21600;
-    }
-    else if (currentTimeInSeconds < 21600) {
-      maxTime += 21600 - currentTimeInSeconds;
-    }
-    """
     
     current_time_in_seconds = utils.get_time_in_seconds()
     
@@ -103,11 +84,12 @@ while True:
                             
                             temp_stop_record = 0
                             if temp_time_in_seconds > START_RECORD:
-                                temp_stop_record = 86400 - temp_time_in_seconds + 21600;
+                                temp_stop_record = DAY_IN_SECONDS - temp_time_in_seconds + STOP_RECORD;
                             elif temp_time_in_seconds < STOP_RECORD:
-                                temp_stop_record = 21600 - temp_time_in_seconds
+                                temp_stop_record = STOP_RECORD - temp_time_in_seconds
                             
-                            file_reception = utils.real_timed_receive_file(radio, record.path + "/" + desks[i] + "_" + file_name, file_size, temp_stop_record, DEBUG)
+                            file_reception = utils.real_timed_receive_file(radio, record.path + "/" + desks[i] + "_" + file_name,
+                                                                           file_size, STOP_RECORD, START_RECORD, DEBUG)
                             if file_reception == "interrupted":
                                 if LOG:
                                     record.write_log("WARNING: Transmission interrupted.")
@@ -140,7 +122,7 @@ counter = 0
 recorded_desk = [0] * len(desks)
 
 while True:
-    current_time = datetime.now()
+    current_time = dt.datetime.now()
     time.sleep(3)
     
     if current_time.second >= START_RECORD and current_time.second < STOP_RECORD:
@@ -155,7 +137,7 @@ while True:
         if LOG:
             record.write_log("INFO: Record created")
         
-        while datetime.now().second < STOP_RECORD:
+        while dt.datetime.now().second < STOP_RECORD:
             if sum(recorded_desk) != len(recorded_desk):
                 print("In while")
                 for i, pipe in enumerate(pipes):

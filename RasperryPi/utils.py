@@ -151,7 +151,7 @@ def get_time_in_seconds():
     return current_time_in_seconds
 
 
-def real_timed_receive_file(radio, file_name, file_size, stop_time, debug=False):
+def real_timed_receive_file(radio, file_name, file_size, stop_time, start_time, debug=False):
     # TODO: use stop_time properly
     if debug:
         print("Start receiving file {} ({} bytes)".format(file_name, file_size))
@@ -169,7 +169,7 @@ def real_timed_receive_file(radio, file_name, file_size, stop_time, debug=False)
             
             current_time_in_seconds = get_time_in_seconds()
             
-            if 21600 < current_time_in_seconds < 75600:
+            if stop_time < current_time_in_seconds < start_time:
                 if debug:
                     print("WARNING: File transmission interrupted - Time > Stop time")
                 return "interrupted"
