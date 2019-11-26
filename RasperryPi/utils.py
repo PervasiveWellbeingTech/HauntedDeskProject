@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 
 EOF_LINE = [101, 111, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # e, o, f, 0, 0, 0...
+INTERRUPTION_FLAG = "interrupted"
 
 def send_message(radio, message, debug=False):    
     result = radio.write(message)
@@ -93,6 +94,12 @@ def listen_file_info(radio, debug=False):
 
 
 def receive_file(radio, file_name, file_size, debug=False):
+    """
+    Receives a file line by line.
+    End of the reception when an EOF_LINE is received or
+    if the reception time for a line exceeds a given duration (defined
+    in the listen_message_light function).
+    """
     if debug:
         print("Start receiving file {} ({} bytes)".format(file_name, file_size))
     
@@ -140,6 +147,8 @@ def timed_receive_file(radio, file_name, file_size, stop_time, debug=False):
 
 
 def get_time_in_seconds():
+    """Gets the current time and gives this time in seconds."""
+    
     current_time = datetime.now()
     
     current_second = current_time.second
@@ -152,7 +161,8 @@ def get_time_in_seconds():
 
 
 def real_timed_receive_file(radio, file_name, file_size, stop_time, start_time, debug=False):
-    # TODO: use stop_time properly
+    """Same as the receive file function but with a given timelapse to receive the file."""
+    
     if debug:
         print("Start receiving file {} ({} bytes)".format(file_name, file_size))
     
@@ -172,7 +182,7 @@ def real_timed_receive_file(radio, file_name, file_size, stop_time, start_time, 
             if stop_time < current_time_in_seconds < start_time:
                 if debug:
                     print("WARNING: File transmission interrupted - Time > Stop time")
-                return "interrupted"
+                return INTERRUPTION_FLAG
     
     radio.stopListening()
     
