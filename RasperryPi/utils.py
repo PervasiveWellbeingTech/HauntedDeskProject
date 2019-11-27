@@ -153,7 +153,7 @@ def get_time_in_seconds():
     
     current_second = current_time.second
     current_minute = current_time.minute
-    current_hour = (current_time.hour - 8) % 24  # TODO: clean timezone handling
+    current_hour = current_time.hour
     
     current_time_in_seconds = current_second + 60 * current_minute + 3600 * current_hour
     
