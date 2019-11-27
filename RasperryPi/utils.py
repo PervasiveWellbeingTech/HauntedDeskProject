@@ -4,6 +4,30 @@ from datetime import datetime
 EOF_LINE = [101, 111, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # e, o, f, 0, 0, 0...
 INTERRUPTION_FLAG = "interrupted"
 
+
+def pipe_string_to_hexa(pipe):
+    """
+    Converts a string id to an hexadecimal list.
+    Ex: "2DECAF0001" -> [0x2D, 0xEC, 0xAF, 0x00, 0x01]
+    """
+    return [int("0x" + pipe[i:i+2], 16) for i in range(0, len(pipe)-1, 2)]
+
+
+def get_desks_info():
+    lines = []
+    with open("desks_register.txt") as file:
+        for line in file:
+            lines.append(line.rstrip())
+
+    names, pipes = [], []
+    for i in range(0, len(lines), 3):
+        names.append(lines[i])
+        pipes.append([pipe_string_to_hexa(lines[i + 1]),
+                      pipe_string_to_hexa(lines[i + 2])])
+
+    return names, pipes
+        
+
 def send_message(radio, message, debug=False):    
     result = radio.write(message)
     print("Result of sending:", result)

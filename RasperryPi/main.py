@@ -15,16 +15,10 @@ DAY_IN_SECONDS = 24 * 3600
 
 # data transmission between START_RECORD and STOP_RECORD
 # syntax: timedelta(hours=12, minutes=12, seconds=12)
-START_RECORD = dt.timedelta(hours=21).seconds
-STOP_RECORD = dt.timedelta(hours=6).seconds
+START_RECORD = dt.timedelta(hours=16).seconds
+STOP_RECORD = dt.timedelta(hours=17, minutes=16).seconds
 
-GPIO.setmode(GPIO.BCM)  # set the gpio mode
-
-# set the pipe address. this address should be entered on the receiver also
-pipes = [[[0x1D, 0xEC, 0xAF, 0x00, 0x00], [0x2D, 0xEC, 0xAF, 0x00, 0x00]],
-         [[0x1D, 0xEC, 0xAF, 0x00, 0x01], [0x2D, 0xEC, 0xAF, 0x00, 0x01]]]
-desks = ["desk_0", "desk_1"]           # temporary names
-
+GPIO.setmode(GPIO.BCM)                 # set the gpio mode
 radio = NRF24(GPIO, spidev.SpiDev())   # use the gpio pins
 radio.begin(0, 25)                     # start the radio and set the ce,csn pin ce= GPIO08, csn= GPIO25
 radio.setPayloadSize(32)               # set the payload size as 32 bytes
@@ -36,6 +30,7 @@ radio.setRetries(0, 125)
 ##radio.enableDynamicPayloads()
 radio.enableAckPayload()
 
+desks, pipes = utils.get_desks_info()
 record = None
 recorded_desks = [0] * len(desks)
 
@@ -119,6 +114,8 @@ while True:
     current_time_in_seconds = utils.get_time_in_seconds()
     
     if is_time_in_interval(current_time_in_seconds, START_RECORD, STOP_RECORD):
+
+        desks, pipes = utils.get_desks_info()
         
         if is_new_day(recorded_desks):
             record = Record(DATA_PATH)
