@@ -37,6 +37,15 @@ String fileName;
 String oldFileName;
 File dataFile;
 
+/*
+ * Define the record window (when we send data to Raspberry Pi)
+ * Times are in seconds, for exemple to record from 21 p.m. to 6 a.m.: 
+ * -> 21 * 3600 = 75600 seconds and 6 * 3600 = 21600 seconds
+ * -> so we define RECORD_START_TIME = 75600 and RECORD_STOP_TIME = 21600
+ */
+unsigned long RECORD_START_TIME = 75600;
+unsigned long RECORD_STOP_TIME = 21600;
+
 /* *********************************************** VARIABLES FOR THE DESK ************************************************ */
 
 //CHANGE THESE VALUES
@@ -44,7 +53,7 @@ int shortHeight = 67;
 int tallHeight = 106;
 bool useThermal = true;
 bool rememberHeights = true;
-#define CHANGE_TIME 30*60 //__ times 60 seconds
+#define CHANGE_TIME 5*60 //__ times 60 seconds
 //CHANGE THESE VALUES
 
 //Pins for Ultrasonic Sensor
@@ -693,16 +702,17 @@ void loop() {
   unsigned long currentHour = currentDateTime.hour();
 
   unsigned long currentTimeInSeconds = currentSecond + 60 * currentMinute + 3600 * currentHour;
+  debug(1, String(currentTimeInSeconds));
   
   //if ((currentHour >= 21) || (currentHour < 6)) {
-  if ((currentTimeInSeconds >= 75600) || (currentTimeInSeconds < 21600)) {
+  if ((currentTimeInSeconds >= RECORD_START_TIME) || (currentTimeInSeconds < RECORD_STOP_TIME)) {
     unsigned long maxTime = 0;
 
-    if (currentTimeInSeconds >= 75600) {
-      maxTime += 86400 - currentTimeInSeconds + 21600;
+    if (currentTimeInSeconds >= RECORD_START_TIME) {
+      maxTime += 86400 - currentTimeInSeconds + RECORD_STOP_TIME;
     }
-    else if (currentTimeInSeconds < 21600) {
-      maxTime += 21600 - currentTimeInSeconds;
+    else if (currentTimeInSeconds < RECORD_STOP_TIME) {
+      maxTime += RECORD_STOP_TIME - currentTimeInSeconds;
     }
     
     listenToPICustom(maxTime * 1000);
