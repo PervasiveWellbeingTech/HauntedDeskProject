@@ -22,8 +22,8 @@ RTC_DS1307 rtc;
 /* ******************************************** VARIABLES FOR THE TRANSMITTER ***************************************** */
 
 RF24 radio(10, 9); // CE, CSN
-const uint64_t pipes[2] = {0x1DECAF0000LL, 0x2DECAF0000LL}; // receiver and sender
-String deskId = "0000";
+const uint64_t pipes[2] = {0x1DECAF0001LL, 0x2DECAF0001LL}; // receiver and sender
+String deskId = "0001";
 
 // Variables for sd card logger
 const bool debugMode = 1;
@@ -218,7 +218,7 @@ bool sendFilenameSize(String locFileName) {
     
     radioSetup();
 
-    if (rf24SendR(locFileName, 2)) {
+    if (rf24SendR(locFileName, 1000)) {
       debug(1, F("Filename has been send"));
     }
     else {
@@ -226,7 +226,7 @@ bool sendFilenameSize(String locFileName) {
       return false;
     }
     
-    if (rf24SendR(fz, 2)) {
+    if (rf24SendR(fz, 1000)) {
       debug(1, F("Filesize has been send"));
     }
     else {
@@ -273,7 +273,7 @@ void readTransfer32B(String locFileName) {
       pos = myFile.position();
       myFile.close();
       radioSetup();
-      bool packageSend = rf24SendR(bufferr, 40);
+      bool packageSend = rf24SendR(bufferr, 1000);
        
       if(pos < 0) {
         return;
@@ -703,18 +703,28 @@ void loop() {
 
   unsigned long currentTimeInSeconds = currentSecond + 60 * currentMinute + 3600 * currentHour;
   debug(1, String(currentTimeInSeconds));
-  
-  //if ((currentHour >= 21) || (currentHour < 6)) {
-  if ((currentTimeInSeconds >= RECORD_START_TIME) || (currentTimeInSeconds < RECORD_STOP_TIME)) {
-    unsigned long maxTime = 0;
 
-    if (currentTimeInSeconds >= RECORD_START_TIME) {
-      maxTime += 86400 - currentTimeInSeconds + RECORD_STOP_TIME;
+  // When the record starts at the end of a day, and stops at the beginning of the next day
+  if (RECORD_START_TIME > RECORD_STOP_TIME) {
+    if ((currentTimeInSeconds >= RECORD_START_TIME) || (currentTimeInSeconds < RECORD_STOP_TIME)) {
+      unsigned long recordDuration = 0;
+  
+      if (currentTimeInSeconds >= RECORD_START_TIME) {
+        recordDuration += 86400 - currentTimeInSeconds + RECORD_STOP_TIME;
+      }
+      else if (currentTimeInSeconds < RECORD_STOP_TIME) {
+        recordDuration += RECORD_STOP_TIME - currentTimeInSeconds;
+      }
+      
+      listenToPICustom(recordDuration * 1000);  // recordDuration has to be in milliseconds
+    }    
+  }
+
+  // When the record starts and stops on the same day (RECORD_START_TIME <= RECORD_STOP_TIME)
+  else {
+    if ((RECORD_START_TIME <= currentTimeInSeconds) && (currentTimeInSeconds < RECORD_STOP_TIME)) {
+      unsigned long recordDuration = RECORD_STOP_TIME - currentTimeInSeconds;
+      listenToPICustom(recordDuration * 1000);  // recordDuration has to be in milliseconds
     }
-    else if (currentTimeInSeconds < RECORD_STOP_TIME) {
-      maxTime += RECORD_STOP_TIME - currentTimeInSeconds;
-    }
-    
-    listenToPICustom(maxTime * 1000);
   }
 }
