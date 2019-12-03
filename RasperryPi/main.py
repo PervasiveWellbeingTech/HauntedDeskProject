@@ -15,8 +15,8 @@ DAY_IN_SECONDS = 24 * 3600
 
 # data transmission between START_RECORD and STOP_RECORD
 # syntax: timedelta(hours=12, minutes=12, seconds=12)
-START_RECORD = dt.timedelta(hours=16).seconds
-STOP_RECORD = dt.timedelta(hours=17, minutes=16).seconds
+START_RECORD = dt.timedelta(hours=21).seconds
+STOP_RECORD = dt.timedelta(hours=6).seconds
 
 GPIO.setmode(GPIO.BCM)                 # set the gpio mode
 radio = NRF24(GPIO, spidev.SpiDev())   # use the gpio pins
@@ -66,7 +66,7 @@ def are_all_desks_recorded(recorded_desks):
     return sum(recorded_desks) == len(recorded_desks)
 
 
-def record_desk(radio, record, desk_name, recorded_desks):
+def record_desk(radio, record, desk_name, recorded_desks):    
     """
     Full recording process (for one desk):
         - opens writing/reading pipes
@@ -76,7 +76,7 @@ def record_desk(radio, record, desk_name, recorded_desks):
         - sends "ok" to tell the arduino device to start data transmission
     
     If the data transmission exceeds a certain time, the transmission is
-    interrupted and an INTERRUPTED_FLAG is returned.
+    interrupted and an INTERRUPTED_FLAG is returned.    
     """
     
     record.write_log("INFO: Desk " + desk_name)
@@ -127,8 +127,8 @@ while True:
             
             if not are_all_desks_recorded(recorded_desks):
                 for i, pipe in enumerate(pipes):
+                    desk_name = desks[i]
                     if not recorded_desks[i]:
-                        desk_name = desks[i]
                         record_result = record_desk(radio, record, desk_name, recorded_desks)
                         if record_result == INTERRUPTION_FLAG:
                             break
