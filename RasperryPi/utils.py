@@ -2,7 +2,8 @@ import time
 from datetime import datetime
 
 EOF_LINE = [101, 111, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # e, o, f, 0, 0, 0...
-INTERRUPTION_FLAG = "interrupted"
+TIME_EXCEEDED_FLAG = "time_exceeded"
+SIZE_EXCEEDED_FLAG = "size_exceeded"
 
 
 def pipe_string_to_hexa(pipe):
@@ -191,13 +192,13 @@ def real_timed_receive_file(radio, file_name, file_size, stop_time, start_time, 
         print("Start receiving file {} ({} bytes)".format(file_name, file_size))
     
     radio.startListening()
-    counter = 0
+    bytes_counter = 0
     
     with open(file_name, "wb") as file:
         line = listen_message_light(radio, debug=debug)
         while line and line != EOF_LINE:
-            counter += 32
-            print(counter, file_size)
+            bytes_counter += 32
+            print(bytes_counter, file_size)
             file.write(bytes(line))
             line = listen_message_light(radio)
             
@@ -206,7 +207,12 @@ def real_timed_receive_file(radio, file_name, file_size, stop_time, start_time, 
             if stop_time < current_time_in_seconds < start_time:
                 if debug:
                     print("WARNING: File transmission interrupted - Time > Stop time")
-                return INTERRUPTION_FLAG
+                return TIME_EXCEEDED_FLAG
+
+            if bytes_counter > file_size:
+                if debug:
+                    print("WARNING: File transmission interrupted - Bytes counter > File size")
+                return SIZE_EXCEEDED_FLAG
     
     radio.stopListening()
     

@@ -10,7 +10,8 @@ from record import Record
 DEBUG = True      # set to False if you do not want to display debug messages
 OK_RETRIES = 100  # number of times we send "ok" to arduino devices
 DATA_PATH = "data/"
-INTERRUPTION_FLAG = utils.INTERRUPTION_FLAG  # used when a transmission does not have time to end
+TIME_EXCEEDED_FLAG = utils.TIME_EXCEEDED_FLAG  # used when a transmission does not have time to end
+SIZE_EXCEEDED_FLAG = utils.SIZE_EXCEEDED_FLAG  # used when arduino sends too much packets
 DAY_IN_SECONDS = 24 * 3600
 
 # data transmission between START_RECORD and STOP_RECORD
@@ -97,12 +98,19 @@ def record_desk(radio, record, desk_name, recorded_desks):
         
         file_reception = utils.real_timed_receive_file(radio, record.path + "/" + desk_name + "_" + file_name,
                                                        file_size, STOP_RECORD, START_RECORD, DEBUG)
-        if file_reception == INTERRUPTION_FLAG:
-            record.write_log("WARNING: Transmission interrupted.")
+        if file_reception == TIME_EXCEEDED_FLAG:
+            record.write_log("WARNING: Transmission interrupted (time exceeded).")
             return file_reception
         
         recorded_desks[i] = 1
+
+        if file_reception == SIZE_EXCEEDED_FLAG:
+            record.write_log("WARNING: Transmission interrupted (size exceeded).")
+            record.write_log("INFO: Desk " + desk_name + " , success record.")
+            return file_reception
+
         record.write_log("INFO: Desk " + desk_name + " , success record.")
+
     else:
         warning_message = file_info[0]
         record.write_log("WARNING: " + warning_message)
@@ -130,7 +138,7 @@ while True:
                     desk_name = desks[i]
                     if not recorded_desks[i]:
                         record_result = record_desk(radio, record, desk_name, recorded_desks)
-                        if record_result == INTERRUPTION_FLAG:
+                        if record_result == TIME_EXCEEDED_FLAG:
                             break
                     else:
                         record.write_log("INFO: Desk " + desk_name + " already recorded.")
