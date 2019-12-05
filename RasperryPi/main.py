@@ -1,5 +1,6 @@
 import time
 import utils
+import gdrive
 import spidev
 import datetime as dt
 import RPi.GPIO as GPIO
@@ -143,8 +144,11 @@ while True:
                     else:
                         record.write_log("INFO: Desk " + desk_name + " already recorded.")
                             
-        record.write_log("INFO: End of recording")                
-        recorded_desks = [0] * len(desks)      
+        record.write_log("INFO: End of recording")              
+        recorded_desks = [0] * len(desks)
+
+        gdrive.sync()
+        record.write_log("INFO: Google Drive synchronization done") 
     else:
         print("Wait", current_time_in_seconds)
 
