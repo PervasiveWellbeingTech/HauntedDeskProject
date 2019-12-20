@@ -131,7 +131,7 @@ while True:
             record.write_log("INFO: Record created")
         
         while is_time_in_interval(current_time_in_seconds, START_RECORD, STOP_RECORD):
-            print("Transmission", current_time_in_seconds)
+            # print("Transmission", current_time_in_seconds)
             current_time_in_seconds = utils.get_time_in_seconds()
             
             if not are_all_desks_recorded(recorded_desks):

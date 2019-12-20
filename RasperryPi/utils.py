@@ -193,6 +193,7 @@ def real_timed_receive_file(radio, file_name, file_size, stop_time, start_time, 
     
     radio.startListening()
     bytes_counter = 0
+    file_size = int(file_size)
     
     with open(file_name, "wb") as file:
         line = listen_message_light(radio, debug=debug)
