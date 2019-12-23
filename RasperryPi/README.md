@@ -61,3 +61,36 @@ But there are actually 3 ways to end a transmission between the RaspberryPi and 
 
 *Note: When the Arduino module sends a packet to the RaspberryPi, it receives back an acknowledgement message. So when we stop the transmission on the RaspberryPi side, the Arduino module does not receive acknowledgement messages anymore and stops its transmission too.*
 
+### desks_register.txt
+
+This file is used to list all the desks managed by the RaspberryPi.  
+It contains something like:
+```
+desk_0
+1DECAF0000
+2DECAF0000
+desk_1
+1DECAF0001
+2DECAF0001
+```
+
+Here is two desks, the format for each desk is:
+- line 1: desk name
+- line 2: writing pipe ID (1DECAF0000: **1** for writing pipe, **DECAF** for no particular reason, **0000** desk id which is arbitrary)
+- line 3: same as line 2 for reading pipe ID (leading **2** for reading pipe, instead of 1)
+
+Writing and reading pipes ID will are specified in the Arduino code too. It must be the same in both part, so if the RaspberryPi and the Arduino module can't communicate it may come from a typo in one pipe ID.
+
+### data
+
+This folder contains all retrieved data. The structure is:
+```
+__ day 1 (YYMMDD)
+ |__ desk 1 (desk_name_YYMMDD.txt)
+ |__ desk 2
+ |__ ...
+ |__ desk n
+__ day 2
+...
+__ day n
+```
