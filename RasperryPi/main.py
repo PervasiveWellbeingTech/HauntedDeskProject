@@ -147,8 +147,7 @@ while True:
         record.write_log("INFO: End of recording")              
         recorded_desks = [0] * len(desks)
 
-        gdrive.sync()
-        record.write_log("INFO: Google Drive synchronization done") 
+        gdrive.sync(record) 
     else:
         print("Wait", current_time_in_seconds)
 
