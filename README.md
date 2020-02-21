@@ -31,7 +31,7 @@ the data file. It is basically a handshake. If the handshake fails, the Raspberr
 RaspberryPi has to manage several Arduino modules, it sends them a message ("data") one by one.
 - At the end of the night (6 a.m.), the RaspberryPy syncs with the Google Drive and the desk switchs on "working" mode.
 
-**Why we need to record data during the day only ?**  
+**Why do we need to record data during the day only ?**  
 We can't save data (record desk movements) and send data (to the RaspberryPi) at the same time. So we chose to record data during the day
 and transfer them during the night.
 
